@@ -73,14 +73,14 @@ void Error_Handler(void);
 #define EN_B_GPIO_Port GPIOA
 #define EN_A_Pin GPIO_PIN_9
 #define EN_A_GPIO_Port GPIOA
-#define X1_Pin GPIO_PIN_3
-#define X1_GPIO_Port GPIOB
-#define X0_Pin GPIO_PIN_4
-#define X0_GPIO_Port GPIOB
-#define X2_Pin GPIO_PIN_6
-#define X2_GPIO_Port GPIOB
-#define X3_Pin GPIO_PIN_7
-#define X3_GPIO_Port GPIOB
+#define LEFT_Pin GPIO_PIN_3
+#define LEFT_GPIO_Port GPIOB
+#define RIGHT_Pin GPIO_PIN_4
+#define RIGHT_GPIO_Port GPIOB
+#define FORWARD_Pin GPIO_PIN_6
+#define FORWARD_GPIO_Port GPIOB
+#define BACKWARD_Pin GPIO_PIN_7
+#define BACKWARD_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

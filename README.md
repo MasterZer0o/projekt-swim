@@ -1,9 +1,9 @@
  🚗 Autonomiczny Pojazd z STM32
 
 Projekt semestralny z przedmiotu **Systemy Wbudowane i Mikrokontrolery**  
-Autor: _[Twoje imię i nazwisko]_  
-Numer indeksu: _[Twój numer]_  
-Data rozpoczęcia: _[Data]_  
+Autor: _[Jakub Podgórski, Michał Dobosz]_  
+Numer indeksu: _[21294, 21230]_  
+Data rozpoczęcia: _[6.05.2025]_  
 Repozytorium zawiera kod, dokumentację oraz materiały projektowe.
 
 ---
@@ -16,15 +16,15 @@ Celem projektu jest opracowanie modelu autonomicznego pojazdu sterowanego za pom
 
 ## 🛠️ Zastosowane technologie i narzędzia
 
-- **Mikrokontroler:** STM32 (model np. STM32F103C8T6)
+- **Mikrokontroler:** STM32F103C8T6
 - **IDE:** STM32CubeIDE
 - **Programowanie:** C (HAL / LL)
 - **Sensory:**
   - HC-SR04 (ultradźwiękowy)
   - Sensory optyczne (IR)
-- **Zasilanie:** Akumulator Li-Ion / Powerbank
-- **Sterownik silników:** np. L298N
-- **Komunikacja:** UART (Bluetooth HC-05 / USB)
+- **Zasilanie:** Akumulator Li-Ion
+- **Sterownik silników:** np. L293
+- **Komunikacja:** Moduł radiowy 4-kanały 315MHz YK04
 
 ---
 
@@ -34,7 +34,6 @@ Celem projektu jest opracowanie modelu autonomicznego pojazdu sterowanego za pom
 - ✅ Obsługa sensorów ultradźwiękowych (pomiar odległości)
 - ✅ Odczyt wartości z sensorów IR (linia / przeszkody) przy użyciu ADC
 - ✅ Detekcja kolizji i unikanie przeszkód
-- ✅ Sterowanie ruchem przez UART (komendy tekstowe)
 - ✅ Zasilanie bateryjne – pełna autonomia
 - ✅ Regularne wersjonowanie kodu (min. 1 commit/tydzień)
 
@@ -53,7 +52,6 @@ Celem projektu jest opracowanie modelu autonomicznego pojazdu sterowanego za pom
 | `STOP`  | Zatrzymuje pojazd      |
 | `LEFT`  | Skręt w lewo           |
 | `RIGHT` | Skręt w prawo          |
-| `DIST?` | Zwraca odczyt z HC-SR04 |
 
 ---
 
@@ -61,7 +59,7 @@ Celem projektu jest opracowanie modelu autonomicznego pojazdu sterowanego za pom
 
 - [x] Detekcja przeszkody z przodu (sensor HC-SR04)
 - [x] Reakcja na białą/czarną linię (IR)
-- [x] Komunikacja przez Bluetooth
+- [x] Komunikacja przez moduł radiowy YK04
 - [x] Test zasilania bateryjnego
 - [x] Sterowanie ruchem w czasie rzeczywistym
 
@@ -102,8 +100,8 @@ _(Tutaj uzupełnij po zakończeniu projektu)_
 ## 📬 Kontakt
 
 W razie pytań:
-- Email: _twoj.email@uczelnia.edu.pl_
-- GitHub: [Twoja nazwa użytkownika](https://github.com/TwójProfil)
+- Email: _21294@student.ans-elblag.pl_, 21230@student.ans-elblag.pl
+- GitHub: [MasterZer0o](https://github.com/MasterZer0o/)
 
 ---
 

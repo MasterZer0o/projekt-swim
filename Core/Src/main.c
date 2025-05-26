@@ -31,7 +31,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define SPEED 75
+#define BASE_SPEED 69 // prędkośc bazowa PWM (0-99)
+#define SPEED_INCR 10 // współczynnik zwiększania prędkości
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -56,79 +57,185 @@ static void MX_TIM1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void turnLeft(void)
-{
-  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, SPEED);
-  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, SPEED);
+static bool turningLeft = false;
+static bool turningRight = false;
+static bool goingForward = false;
+static bool goingBackward = false;
+static int currentSpeed = BASE_SPEED;
 
-  HAL_GPIO_WritePin(IN1_GPIO_Port, IN1_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(IN2_GPIO_Port, IN2_Pin, GPIO_PIN_SET); // lewy silnik do tyłu
-  HAL_GPIO_WritePin(IN3_GPIO_Port, IN3_Pin, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(IN4_GPIO_Port, IN4_Pin, GPIO_PIN_RESET); // prawy silnik do przodu
+void setSpeed(int speed1, int speed2)
+{
+  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, speed1);
+  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, speed2);
 }
 
-void turnRight(void)
+void setDirections(bool in1, bool in2, bool in3, bool in4)
 {
-  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, SPEED);
-  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, SPEED);
-
-  HAL_GPIO_WritePin(IN1_GPIO_Port, IN1_Pin, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(IN2_GPIO_Port, IN2_Pin, GPIO_PIN_RESET); // lewy silnik do przodu
-  HAL_GPIO_WritePin(IN3_GPIO_Port, IN3_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(IN4_GPIO_Port, IN4_Pin, GPIO_PIN_SET); // prawy silnik do tyłu
+  HAL_GPIO_WritePin(IN1_GPIO_Port, IN1_Pin, in1);
+  HAL_GPIO_WritePin(IN2_GPIO_Port, IN2_Pin, in2);
+  HAL_GPIO_WritePin(IN3_GPIO_Port, IN3_Pin, in3);
+  HAL_GPIO_WritePin(IN4_GPIO_Port, IN4_Pin, in4);
 }
 
-void goForward(void)
+void resetDirection()
 {
-  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, SPEED); // lewy silnik
-  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, SPEED); // prawy silnik
-
-  HAL_GPIO_WritePin(IN1_GPIO_Port, IN1_Pin, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(IN2_GPIO_Port, IN2_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(IN3_GPIO_Port, IN3_Pin, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(IN4_GPIO_Port, IN4_Pin, GPIO_PIN_RESET);
+  // wcześniej inny kierunek
+  stop();         // reset silników
+  HAL_Delay(150); // odczekanie
+  currentSpeed = BASE_SPEED;
 }
 
-void goBackward(void)
+void toggleTurnLeft()
 {
-  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, SPEED);
-  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, SPEED);
+  if (turningRight)
+  {
+    // przeciwny kierunek zatrzymuje pojazd
+    stop();
+    return;
+  }
 
-  HAL_GPIO_WritePin(IN1_GPIO_Port, IN1_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(IN2_GPIO_Port, IN2_Pin, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(IN3_GPIO_Port, IN3_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(IN4_GPIO_Port, IN4_Pin, GPIO_PIN_SET);
+  else if (turningLeft)
+  {
+    if (currentSpeed + SPEED_INCR <= 99)
+    {
+      currentSpeed += SPEED_INCR;
+    }
+  }
+  else
+  {
+    resetDirection();
+  }
+
+  setSpeed(currentSpeed, currentSpeed);
+  turningLeft = true;
+  turningRight = false;
+  goingForward = false;
+  goingBackward = false;
+
+  // lewy silnik do tyłu
+  // prawy silnik do przodu
+  setDirections(false, true, true, false);
 }
 
-void stop(void)
+void toggleTurnRight()
 {
-  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);
-  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 0);
+  if (turningLeft)
+  {
+    // przeciwny kierunek zatrzymuje pojazd
+    stop();
+    return;
+  }
 
-  HAL_GPIO_WritePin(IN1_GPIO_Port, IN1_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(IN2_GPIO_Port, IN2_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(IN3_GPIO_Port, IN3_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(IN4_GPIO_Port, IN4_Pin, GPIO_PIN_RESET);
+  else if (turningRight)
+  {
+    if (currentSpeed + SPEED_INCR <= 99)
+    {
+      currentSpeed += SPEED_INCR;
+    }
+  }
+  else
+  {
+    resetDirection();
+  }
+
+  turningRight = true;
+  turningLeft = false;
+  goingForward = false;
+  goingBackward = false;
+
+  // lewy silnik do przodu
+  // prawy silnik do tyłu
+  setDirections(true, false, false, true);
+}
+
+void toggleGoForward()
+{
+  if (goingBackward)
+  {
+    // przeciwny kierunek zatrzymuje pojazd
+    stop();
+    return;
+  }
+
+  else if (goingForward)
+  {
+    if (currentSpeed + SPEED_INCR <= 99)
+    {
+      currentSpeed += SPEED_INCR;
+    }
+  }
+  else
+  {
+    resetDirection();
+  }
+
+  goingForward = true;
+  goingBackward = false;
+  turningLeft = false;
+  turningRight = false;
+
+  setDirections(true, false, true, false);
+}
+
+void toggleGoBackward()
+{
+  if (goingForward)
+  {
+    // przeciwny kierunek zatrzymuje pojazd
+    stop();
+    return;
+  }
+
+  else if (goingBackward)
+  {
+    if (currentSpeed + SPEED_INCR <= 99)
+    {
+      currentSpeed += SPEED_INCR;
+    }
+  }
+  else
+  {
+    resetDirection();
+  }
+
+  goingBackward = true;
+  goingForward = false;
+  turningLeft = false;
+  turningRight = false;
+
+  setDirections(false, true, false, true);
+}
+
+void stop()
+{
+  goingForward = false;
+  goingBackward = false;
+  turningLeft = false;
+  turningRight = false;
+
+  setSpeed(0, 0);
+
+  setDirections(false, false, false, false);
 }
 
 bool shouldGoLeft()
 {
-  return HAL_GPIO_ReadPin(LEFT_GPIO_Port, LEFT_Pin) == GPIO_PIN_SET;
+  return HAL_GPIO_ReadPin(LEFT_GPIO_Port, LEFT_Pin);
 }
 
 bool shouldGoRight()
 {
-  return HAL_GPIO_ReadPin(RIGHT_GPIO_Port, RIGHT_Pin) == GPIO_PIN_SET;
+  return HAL_GPIO_ReadPin(RIGHT_GPIO_Port, RIGHT_Pin);
 }
 
 bool shouldGoForward()
 {
-  return HAL_GPIO_ReadPin(FORWARD_GPIO_Port, FORWARD_Pin) == GPIO_PIN_SET;
+  return HAL_GPIO_ReadPin(FORWARD_GPIO_Port, FORWARD_Pin);
 }
 
 bool shouldGoBackward()
 {
-  return HAL_GPIO_ReadPin(LEFT_GPIO_Port, LEFT_Pin) == GPIO_PIN_SET;
+  return HAL_GPIO_ReadPin(BACKWARD_GPIO_Port, BACKWARD_Pin);
 }
 
 /* USER CODE END 0 */
@@ -164,37 +271,68 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1); // EN_A
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2); // EN_B
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1); // Sterownik port "EN_A"
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2); // Sterownik port "EN_B"
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  bool prevForward = false;
+  bool prevBackward = false;
+  bool prevLeft = false;
+  bool prevRight = false;
   while (1)
   {
+    if (
+        (HAL_GPIO_ReadPin(FORWARD_GPIO_Port, FORWARD_Pin) == GPIO_PIN_SET) ||
+        (HAL_GPIO_ReadPin(BACKWARD_GPIO_Port, BACKWARD_Pin) == GPIO_PIN_SET) ||
+        (HAL_GPIO_ReadPin(LEFT_GPIO_Port, LEFT_Pin) == GPIO_PIN_SET) ||
+        (HAL_GPIO_ReadPin(RIGHT_GPIO_Port, RIGHT_Pin) == GPIO_PIN_SET))
+    {
+      // zapalenie leda na płytce
 
-    if (shouldGoForward())
-    {
-      goForward(); // jazda do przodu
+      HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
     }
-    else if (shouldGoBackward())
+
+    bool currentForward = shouldGoForward();
+    bool currentBackward = shouldGoBackward();
+    bool currentLeft = shouldGoLeft();
+    bool currentRight = shouldGoRight();
+
+    if (currentForward && !prevForward)
     {
-      goBackward(); // jazda do tyłu
+      toggleGoForward();
     }
-    else if (shouldGoLeft())
+    else if (currentBackward && !prevBackward)
     {
-      turnLeft(); // skręcanie w lewo
+      toggleGoBackward();
     }
-    else if (shouldGoRight())
+    else if (currentLeft && !prevLeft)
     {
-      turnRight(); // skręcanie w prawo
+      toggleTurnLeft();
     }
-    else
+    else if (currentRight && !prevRight)
     {
+      toggleTurnRight();
+    }
+    else if (!goingForward && !goingBackward && !turningLeft && !turningRight)
+    {
+      // zgaszenie leda na płytce
+
       // zatrzymanie
       stop();
     }
+
+    if (!currentForward && !currentBackward && !currentLeft && !currentRight)
+    {
+      HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+    }
+
+    prevForward = currentForward;
+    prevBackward = currentBackward;
+    prevLeft = currentLeft;
+    prevRight = currentRight;
 
     /* USER CODE END WHILE */
 
@@ -343,8 +481,14 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LEFT_Pin RIGHT_Pin FORWARD_Pin BACKWARD_Pin */
-  GPIO_InitStruct.Pin = LEFT_Pin | RIGHT_Pin | FORWARD_Pin | BACKWARD_Pin;
+  /*Configure GPIO pin : DIST_Pin */
+  GPIO_InitStruct.Pin = DIST_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+  HAL_GPIO_Init(DIST_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : LINE_3_Pin LINE_2_Pin LINE_1_Pin LEFT_Pin
+                           RIGHT_Pin FORWARD_Pin BACKWARD_Pin */
+  GPIO_InitStruct.Pin = LINE_3_Pin | LINE_2_Pin | LINE_1_Pin | LEFT_Pin | RIGHT_Pin | FORWARD_Pin | BACKWARD_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);

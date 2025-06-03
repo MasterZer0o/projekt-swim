@@ -81,6 +81,10 @@ void Error_Handler(void);
 #define EN_B_GPIO_Port GPIOA
 #define EN_A_Pin GPIO_PIN_9
 #define EN_A_GPIO_Port GPIOA
+#define ECHO_Pin GPIO_PIN_11
+#define ECHO_GPIO_Port GPIOA
+#define TRIG_Pin GPIO_PIN_12
+#define TRIG_GPIO_Port GPIOA
 #define LEFT_Pin GPIO_PIN_3
 #define LEFT_GPIO_Port GPIOB
 #define RIGHT_Pin GPIO_PIN_4

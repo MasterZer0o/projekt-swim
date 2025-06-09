@@ -22,8 +22,8 @@ Celem projektu jest opracowanie modelu autonomicznego pojazdu sterowanego za pom
 - **Sensory:**
   - HC-SR04 (ultradźwiękowy)
   - Sensory optyczne (IR)
-- **Zasilanie:** Akumulator Li-Ion
-- **Sterownik silników:** np. L293
+- **Zasilanie:** 2x 2s Akumulator Li-Ion 18650
+- **Sterownik silników:** L293
 - **Komunikacja:** Moduł radiowy 4-kanały 315MHz YK04
 
 ---
@@ -93,7 +93,6 @@ Pełna dokumentacja projektu znajduje się w folderze [`Docs/`](./Docs/), w tym:
 
 ## 🧠 Wnioski
 
-_(Tutaj uzupełnij po zakończeniu projektu)_
 
 ---
 

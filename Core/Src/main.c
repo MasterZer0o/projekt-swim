@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdbool.h>
+#include <stdio.h>
 #include "ssd1306.h"
 #include "ssd1306_fonts.h"
 #include <string.h>
@@ -35,8 +36,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define BASE_SPEED 40 // prędkośc bazowa PWM (0-99)
-#define SPEED_INCR 10 // współczynnik zwiększania prędkości
+#define BASE_SPEED 50 // prędkośc bazowa PWM (0-99)
+
+static const uint8_t LOW = 0;
+static const uint8_t HIGH = 1;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -64,11 +67,8 @@ static void MX_I2C1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-static bool turningLeft = false;
-static bool turningRight = false;
-static bool goingForward = false;
-static bool goingBackward = false;
 static int currentSpeed = BASE_SPEED;
+static uint32_t last_update_time = 0;
 
 void setSpeed(int speed1, int speed2)
 {
@@ -76,7 +76,7 @@ void setSpeed(int speed1, int speed2)
   __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, speed2);
 }
 
-void setDirections(bool in1, bool in2, bool in3, bool in4)
+void setDirections(GPIO_PinState in1, GPIO_PinState in2, GPIO_PinState in3, GPIO_PinState in4)
 {
   HAL_GPIO_WritePin(IN1_GPIO_Port, IN1_Pin, in1);
   HAL_GPIO_WritePin(IN2_GPIO_Port, IN2_Pin, in2);
@@ -84,231 +84,94 @@ void setDirections(bool in1, bool in2, bool in3, bool in4)
   HAL_GPIO_WritePin(IN4_GPIO_Port, IN4_Pin, in4);
 }
 
-void resetDirection()
-{
-  // wcześniej inny kierunek
-  stop();         // reset silników
-  HAL_Delay(150); // odczekanie
-  currentSpeed = BASE_SPEED;
-}
-
-void toggleTurnLeft()
-{
-  // if (turningRight)
-  // {
-  //   // przeciwny kierunek zatrzymuje pojazd
-  //   stop();
-  //   return;
-  // }
-
-  // else if (turningLeft)
-  // {
-  //   if (currentSpeed + SPEED_INCR <= 99)
-  //   {
-  //     currentSpeed += SPEED_INCR;
-  //   }
-  // }
-  // else
-  // {
-  //   resetDirection();
-  // }
-
-  setSpeed(currentSpeed + 25, currentSpeed + 25);
-  // turningLeft = true;
-  // turningRight = false;
-  // goingForward = false;
-  // goingBackward = false;
-
-  // lewy silnik do tyłu
-  // prawy silnik do przodu
-  setDirections(false, true, true, false);
-}
-
-void toggleTurnRight()
-{
-  // if (turningLeft)
-  // {
-  //   // przeciwny kierunek zatrzymuje pojazd
-  //   stop();
-  //   return;
-  // }
-
-  // else if (turningRight)
-  // {
-  //   if (currentSpeed + SPEED_INCR <= 99)
-  //   {
-  //     currentSpeed += SPEED_INCR;
-  //   }
-  // }
-  // else
-  // {
-  //   resetDirection();
-  // }
-
-  setSpeed(currentSpeed + 25, currentSpeed + 25);
-  // turningRight = true;
-  // turningLeft = false;
-  // goingForward = false;
-  // goingBackward = false;
-
-  // lewy silnik do przodu
-  // prawy silnik do tyłu
-  setDirections(true, false, false, true);
-}
-
-void toggleGoForward()
-{
-  // if (goingBackward)
-  // {
-  //   // przeciwny kierunek zatrzymuje pojazd
-  //   stop();
-  //   return;
-  // }
-
-  // else if (goingForward)
-  // {
-  //   if (currentSpeed + SPEED_INCR <= 99)
-  //   {
-  //     currentSpeed += SPEED_INCR;
-  //   }
-  // }
-  // else
-  // {
-  //   resetDirection();
-  // }
-
-  setSpeed(currentSpeed, currentSpeed);
-  // goingForward = true;
-  // goingBackward = false;
-  // turningLeft = false;
-  // turningRight = false;
-
-  setDirections(true, false, true, false);
-}
-
-void toggleGoBackward()
-{
-  // if (goingForward)
-  // {
-  //   // przeciwny kierunek zatrzymuje pojazd
-  //   stop();
-  //   return;
-  // }
-
-  // else if (goingBackward)
-  // {
-  //   if (currentSpeed + SPEED_INCR <= 99)
-  //   {
-  //     currentSpeed += SPEED_INCR;
-  //   }
-  // }
-  // else
-  // {
-  //   resetDirection();
-  // }
-
-  setSpeed(currentSpeed, currentSpeed);
-  // goingBackward = true;
-  // goingForward = false;
-  // turningLeft = false;
-  // turningRight = false;
-
-  setDirections(false, true, false, true);
-}
-
 void stop()
 {
-  // goingForward = false;
-  // goingBackward = false;
-  // turningLeft = false;
-  // turningRight = false;
-
   setSpeed(0, 0);
-
   setDirections(false, false, false, false);
 }
+
+void resetDirection()
+{
+  stop();         // reset silników
+  HAL_Delay(150); // odczekanie
+}
+
+void turnLeft()
+{
+  setSpeed(BASE_SPEED + 25, BASE_SPEED + 25);
+  // lewy silnik do tyłu
+  // prawy silnik do przodu
+  setDirections(LOW, HIGH, HIGH, LOW);
+}
+
+void turnRight()
+{
+  setSpeed(BASE_SPEED + 25, BASE_SPEED + 25);
+  // lewy silnik do przodu
+  // prawy silnik do tyłu
+  setDirections(HIGH, LOW, LOW, HIGH);
+}
+
+void goForward()
+{
+  setSpeed(currentSpeed, currentSpeed);
+  setDirections(HIGH, LOW, HIGH, LOW);
+}
+
+void goBackward()
+{
+  setSpeed(currentSpeed, currentSpeed);
+  setDirections(LOW, HIGH, LOW, HIGH);
+}
+
 float read_distance_cm()
 {
   uint32_t startTick, endTick, pulseDuration;
   float distance;
 
-  HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, LOW);
   DWT_Delay(2);
-  HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, HIGH);
   DWT_Delay(10);
-  HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, LOW);
 
   // Wait for Echo to go HIGH
-  while (HAL_GPIO_ReadPin(ECHO_GPIO_Port, ECHO_Pin) == GPIO_PIN_RESET)
+  while (HAL_GPIO_ReadPin(ECHO_GPIO_Port, ECHO_Pin) == LOW)
     ;
   startTick = DWT->CYCCNT;
 
   // Wait for Echo to go LOW
-  while (HAL_GPIO_ReadPin(ECHO_GPIO_Port, ECHO_Pin) == GPIO_PIN_SET)
+  while (HAL_GPIO_ReadPin(ECHO_GPIO_Port, ECHO_Pin) == HIGH)
     ;
   endTick = DWT->CYCCNT;
 
-  uint32_t cpu_freq = HAL_RCC_GetHCLKFreq(); // or SystemCoreClock
+  uint32_t cpu_freq = HAL_RCC_GetHCLKFreq();
   pulseDuration = (float)(endTick - startTick) / (cpu_freq / 1000000.0f);
 
-  // Calculate distance in cm
+  // distance in cm
   distance = pulseDuration * 0.0343f / 2.0f;
 
   return distance;
 }
 
-// void HCSR04_Trigger(void)
-// {
-//   HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_RESET);
-//   DWT_Delay(2);
-//   HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_SET);
-//   DWT_Delay(10);
-//   HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_RESET);
-// }
-
-// uint32_t HCSR04_Read(void)
-// {
-//   uint32_t start = 0, stop = 0;
-
-//   HCSR04_Trigger();
-
-//   // Wait for echo to go HIGH
-//   while (HAL_GPIO_ReadPin(ECHO_PORT, ECHO_PIN) == GPIO_PIN_RESET)
-//     ;
-
-//   start = __HAL_TIM_GET_COUNTER(&htim2);
-
-//   // Wait for echo to go LOW
-//   while (HAL_GPIO_ReadPin(ECHO_PORT, ECHO_PIN) == GPIO_PIN_SET)
-//     ;
-
-//   stop = __HAL_TIM_GET_COUNTER(&htim2);
-
-//   uint32_t time_us = stop - start;
-
-//   uint32_t distance_cm = time_us / 58;
-
-//   return distance_cm;
-// }
-
 bool shouldGoLeft()
 {
-  return HAL_GPIO_ReadPin(LEFT_GPIO_Port, LEFT_Pin);
+  return HAL_GPIO_ReadPin(LEFT_GPIO_Port, LEFT_Pin) == HIGH;
 }
 
 bool shouldGoRight()
 {
-  return HAL_GPIO_ReadPin(RIGHT_GPIO_Port, RIGHT_Pin);
+  return HAL_GPIO_ReadPin(RIGHT_GPIO_Port, RIGHT_Pin) == HIGH;
 }
 
 bool shouldGoForward()
 {
-  return HAL_GPIO_ReadPin(FORWARD_GPIO_Port, FORWARD_Pin);
+  return HAL_GPIO_ReadPin(FORWARD_GPIO_Port, FORWARD_Pin) == HIGH;
 }
 
 bool shouldGoBackward()
 {
-  return HAL_GPIO_ReadPin(BACKWARD_GPIO_Port, BACKWARD_Pin);
+  return HAL_GPIO_ReadPin(BACKWARD_GPIO_Port, BACKWARD_Pin) == HIGH;
 }
 
 void displayWriteMode(bool autoMode)
@@ -320,6 +183,15 @@ void displayWriteMode(bool autoMode)
   ssd1306_WriteString(str, Font_7x10, White);
   ssd1306_UpdateScreen();
 }
+
+typedef enum
+{
+  STOP = 0,
+  RIGHT = 1,
+  LEFT = 2,
+  FORWARD = 3,
+  BACKWARD = 4
+} Direction;
 /**
  * 1- w prawo
  * 2- w lewo
@@ -327,30 +199,30 @@ void displayWriteMode(bool autoMode)
  * 4- do tylu
  * 0 - stop
  */
-void displayWriteDir(uint8_t dirNum)
+void displayWriteDir(Direction dirNum)
 {
   char str[17];
   char dir[10];
   switch (dirNum)
   {
-  case 1:
-    strcpy(dir, "W prawo");
+  case RIGHT:
+    strcpy(dir, "Prawo");
     break;
-  case 2:
-    strcpy(dir, "W lewo");
+  case LEFT:
+    strcpy(dir, "Lewo");
     break;
-  case 3:
-    strcpy(dir, "Do przodu");
+  case FORWARD:
+    strcpy(dir, "Wprost");
     break;
-  case 4:
-    strcpy(dir, "Do tylu");
+  case BACKWARD:
+    strcpy(dir, "Tylem");
     break;
   default:
     strcpy(dir, "STOP");
     break;
   }
-  snprintf(str, sizeof(str), "Kier: %s", dir);
-  ssd1306_FillRectangle(0, 0, 128, 10, Black);
+  snprintf(str, sizeof(str), "Dir:%s", dir);
+  ssd1306_FillRectangle(0, 0, 70, 10, Black);
   ssd1306_SetCursor(0, 0);
   ssd1306_WriteString(str, Font_7x10, White);
   ssd1306_UpdateScreen();
@@ -366,6 +238,85 @@ void displayWriteDistance(float distance)
   ssd1306_SetCursor(75, 0);
   ssd1306_WriteString(str, Font_6x8, White);
   ssd1306_UpdateScreen();
+}
+/**
+ * Zmienia stan wbudowanego LED `state` na płytce
+ */
+void toggleBoardLed(bool state)
+{
+  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, !state);
+}
+
+uint8_t leftOnLine, centerOnLine, rightOnLine;
+
+/** Aktualizuje zmienne o wartości czy czujnik wykrył linię */
+void readLineSensors()
+{
+  leftOnLine = HAL_GPIO_ReadPin(LINE_LEFT_GPIO_Port, LINE_LEFT_Pin) == HIGH;
+  centerOnLine = HAL_GPIO_ReadPin(LINE_CENTER_GPIO_Port, LINE_CENTER_Pin) == HIGH;
+  rightOnLine = HAL_GPIO_ReadPin(LINE_RIGHT_GPIO_Port, LINE_RIGHT_Pin) == HIGH;
+}
+
+static Direction lastMove = FORWARD;
+
+void runAutoMode()
+{
+  readLineSensors();
+
+  if (centerOnLine)
+  {
+    goForward();
+    lastMove = FORWARD;
+    displayWriteDir(FORWARD);
+  }
+  else if (leftOnLine)
+  {
+    turnLeft();
+    lastMove = LEFT;
+    displayWriteDir(LEFT);
+  }
+  else if (rightOnLine)
+  {
+    turnRight();
+    lastMove = RIGHT;
+    displayWriteDir(RIGHT);
+  }
+  else
+  {
+    switch (lastMove)
+    {
+    case 1:
+      turnRight();
+      break;
+    case 2:
+      turnLeft();
+      break;
+    case 3:
+      goForward();
+      break;
+
+    default:
+      break;
+    }
+    displayWriteDir(lastMove);
+  }
+}
+
+bool handleDistance()
+{
+  uint32_t current_time = HAL_GetTick();
+
+  bool obstacleDetected = false;
+  // aktualizacja wyświetlacza co 0.45s o dane z sensora odległości
+  if ((current_time - last_update_time) >= 450)
+  {
+    last_update_time = current_time;
+    float dist = read_distance_cm();
+    displayWriteDistance(dist);
+    obstacleDetected = (dist <= 50);
+  }
+
+  return obstacleDetected;
 }
 
 /* USER CODE END 0 */
@@ -406,7 +357,7 @@ int main(void)
   __HAL_AFIO_REMAP_I2C1_ENABLE();
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1); // Sterownik port "EN_A"
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2); // Sterownik port "EN_B"
-  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+  toggleBoardLed(false);
   ssd1306_Init();
 
   displayWriteMode(false);
@@ -420,45 +371,60 @@ int main(void)
   bool prevLeft = false;
   bool prevRight = false;
 
-  uint8_t button_prev_state = 0; // 1 = nie wciśnięty (bo GPIO_PIN_RESET = wciśnięty)
-  uint8_t toggle_state = 0;      // Twój przełączany stan, np. do LED
+  uint8_t buttonPrevState = 0;
+  uint8_t autoMode = 0;
 
   DWT_Init();
+
+  bool obstacleDetected = false;
 
   while (1)
   {
     uint8_t button_current = HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_Pin);
 
-    if (button_prev_state == 0 && button_current == 1)
+    if (buttonPrevState == 0 && button_current == 1)
     {
-      toggle_state = !toggle_state;
-      displayWriteMode(toggle_state);
+      autoMode = !autoMode;
+      displayWriteMode(autoMode);
     }
 
-    button_prev_state = button_current;
-
-    displayWriteDistance(read_distance_cm());
-    HAL_Delay(1000);
-
-    if (
-        (HAL_GPIO_ReadPin(FORWARD_GPIO_Port, FORWARD_Pin) == GPIO_PIN_SET) ||
-        (HAL_GPIO_ReadPin(BACKWARD_GPIO_Port, BACKWARD_Pin) == GPIO_PIN_SET) ||
-        (HAL_GPIO_ReadPin(LEFT_GPIO_Port, LEFT_Pin) == GPIO_PIN_SET) ||
-        (HAL_GPIO_ReadPin(RIGHT_GPIO_Port, RIGHT_Pin) == GPIO_PIN_SET))
-    {
-      // zapalenie leda na płytce
-
-      HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
-    }
+    buttonPrevState = button_current;
 
     bool currentForward = shouldGoForward();
+
+    obstacleDetected = handleDistance();
+
+    if (autoMode)
+    {
+      currentSpeed = BASE_SPEED;
+      runAutoMode();
+
+      char str[16];
+      snprintf(str, sizeof(str), "L%d C%d R%d", leftOnLine, centerOnLine, rightOnLine);
+      ssd1306_FillRectangle(90, 21, 128, 28, Black);
+      ssd1306_SetCursor(80, 21);
+      ssd1306_WriteString(str, Font_6x8, White);
+      ssd1306_UpdateScreen();
+
+      HAL_Delay(50);
+      stop();
+      HAL_Delay(100);
+      continue;
+    }
+    currentSpeed = 65;
+
     bool currentBackward = shouldGoBackward();
     bool currentLeft = shouldGoLeft();
     bool currentRight = shouldGoRight();
+    if (
+        currentForward || currentBackward || currentLeft || currentRight)
+    {
+      toggleBoardLed(true);
+    }
 
     if (currentForward)
     {
-      toggleGoForward();
+      goForward();
       if (!prevForward)
       {
         displayWriteDir(1);
@@ -466,15 +432,15 @@ int main(void)
     }
     else if (currentBackward)
     {
-      toggleGoBackward();
+      goBackward();
       if (!prevBackward)
       {
         displayWriteDir(2);
       }
     }
-    else if (currentLeft)
+    else if (currentLeft && !obstacleDetected)
     {
-      toggleTurnLeft();
+      turnLeft();
       if (!prevLeft)
       {
         displayWriteDir(3);
@@ -482,34 +448,25 @@ int main(void)
     }
     else if (currentRight)
     {
-      toggleTurnRight();
+      turnRight();
       if (!prevRight)
       {
         displayWriteDir(4);
       }
     }
-    // else if (!goingForward && !goingBackward && !turningLeft && !turningRight)
-    // {
-    //   // zgaszenie leda na płytce
-
-    //   // zatrzymanie
-    //   stop();
-    // }
     else
     {
-      stop();
-      HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+      toggleBoardLed(false);
+      resetDirection();
 
-      if (!prevBackward && !prevForward && !prevLeft && !prevRight)
+      if (prevBackward || prevForward || prevLeft || prevRight)
       {
         displayWriteDir(0);
-        HAL_Delay(150);
       }
     }
 
-    // if (!currentForward && !currentBackward && !currentLeft && !currentRight)
-    // {
-    //   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+    // if (currentLeft || currentRight || currentForward || currentBackward) {
+    //   HAL_Delay(150);
     // }
 
     prevForward = currentForward;
@@ -612,7 +569,7 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 71;
+  htim1.Init.Prescaler = 700;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim1.Init.Period = 99;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -681,7 +638,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, IN4_Pin | IN3_Pin | IN2_Pin | IN1_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, IN1_Pin | IN2_Pin | IN4_Pin | IN3_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_RESET);
@@ -693,8 +650,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LED_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : IN4_Pin IN3_Pin IN2_Pin IN1_Pin */
-  GPIO_InitStruct.Pin = IN4_Pin | IN3_Pin | IN2_Pin | IN1_Pin;
+  /*Configure GPIO pins : IN1_Pin IN2_Pin IN4_Pin IN3_Pin */
+  GPIO_InitStruct.Pin = IN1_Pin | IN2_Pin | IN4_Pin | IN3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -706,9 +663,9 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(BTN_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LINE_3_Pin LINE_2_Pin LINE_1_Pin LEFT_Pin
+  /*Configure GPIO pins : LINE_RIGHT_Pin LINE_CENTER_Pin LINE_LEFT_Pin LEFT_Pin
                            RIGHT_Pin FORWARD_Pin BACKWARD_Pin */
-  GPIO_InitStruct.Pin = LINE_3_Pin | LINE_2_Pin | LINE_1_Pin | LEFT_Pin | RIGHT_Pin | FORWARD_Pin | BACKWARD_Pin;
+  GPIO_InitStruct.Pin = LINE_RIGHT_Pin | LINE_CENTER_Pin | LINE_LEFT_Pin | LEFT_Pin | RIGHT_Pin | FORWARD_Pin | BACKWARD_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
